@@ -49,22 +49,22 @@
         zoom: 4 // 缩放级别
       });
 
-      // 添加 OpenStreetMap 景点图层
+      // 加载 OpenStreetMap 和 My Attraction 图层
       var osmAttractionsLayer = new FeatureLayer({
-        url: "YOUR_OSM_FEATURE_LAYER_URL"  // 替换为 OSM 数据集的 URL
+        url: "https://services6.arcgis.com/Do88DoK2xjTUCXd1/arcgis/rest/services/OSM_NA_Tourism/FeatureServer"  // 替换为 OpenStreetMap 数据集的 URL
       });
 
-      // 添加用户自定义景点的 Feature Layer
-      var attractionsLayer = new FeatureLayer({
-        url: "YOUR_CUSTOM_FEATURE_LAYER_URL"  // 这里替换为你创建的自定义景点 Feature Layer URL
+      var myAttractionsLayer = new FeatureLayer({
+        url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/My_Attraction/FeatureServer"  // 替换为 My Attraction 的 URL
       });
 
-      // 添加用于存储评论和评分的图层
+      // 加载用于存储评论和评分的图层
       var reviewLayer = new FeatureLayer({
-        url: "YOUR_REVIEW_LAYER_URL"  // 替换为存储评论和评分的图层 URL
+        url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/Comments_and_Rating/FeatureServer"  // 替换为存储评论和评分的图层 URL
       });
 
-      map.addMany([osmAttractionsLayer, attractionsLayer]);
+      // 将图层添加到地图中
+      map.addMany([osmAttractionsLayer, myAttractionsLayer]);
 
       // 监听添加景点按钮
       document.getElementById("addButton").addEventListener("click", function() {
@@ -73,7 +73,7 @@
         this.style.backgroundColor = "#ff8800";
       });
 
-      // 地图点击事件，添加新的景点
+      // 地图点击事件，添加新景点或显示评论和评分
       view.on("click", function(event) {
         if (isEditing) {
           var point = event.mapPoint;
@@ -102,7 +102,7 @@
             <button onclick="submitAttraction(${point.longitude}, ${point.latitude})">Submit</button>
           </div>
         `;
-        document.body.insertAdjacentHTML("beforeend", formHtml); // 将表单插入页面
+        document.body.insertAdjacentHTML("beforeend", formHtml);
       }
 
       // 提交新景点信息
@@ -124,11 +124,11 @@
           }
         };
 
-        attractionsLayer.applyEdits({
+        myAttractionsLayer.applyEdits({
           addFeatures: [newFeature]
         }).then(function(response) {
           console.log("Attraction added successfully:", response);
-          document.getElementById("attractionForm").remove(); // 成功后移除表单
+          document.getElementById("attractionForm").remove();
           isEditing = false;
           document.getElementById("addButton").innerText = "Add my attraction";
           document.getElementById("addButton").style.backgroundColor = "#007acc";
@@ -139,12 +139,12 @@
 
       // 打开现有景点的弹出窗口，包含评论和评分
       function openPopupForAttraction(feature) {
-        var attractionId = feature.attributes.OBJECTID;
+        var attractionId = feature.attributes.OBJECTID;  // 使用景点的 OBJECTID 作为 AttractionID
 
         view.popup.open({
-          title: feature.attributes.name,
+          title: feature.attributes.Name,
           content: `
-            <p>${feature.attributes.description}</p>
+            <p>${feature.attributes.Description}</p>
             <h3>Average Rating: <span id="averageRating"></span></h3>
             <label for="rating">Your Rating (1-5):</label>
             <input type="number" id="rating" min="1" max="5"><br>
@@ -160,7 +160,7 @@
         loadReviews(attractionId);
       }
 
-      // 计算该景点的平均评分
+      // 计算平均评分
       function calculateAverageRating(attractionId) {
         var query = reviewLayer.createQuery();
         query.where = `AttractionID = '${attractionId}'`;
@@ -178,7 +178,7 @@
         });
       }
 
-      // 加载并显示评论
+      // 加载评论
       function loadReviews(attractionId) {
         var query = reviewLayer.createQuery();
         query.where = `AttractionID = '${attractionId}'`;
@@ -188,7 +188,7 @@
           reviewsSection.innerHTML = "";
 
           result.features.forEach(function(feature) {
-            reviewsSection.innerHTML += `<p>${feature.attributes.Username}: ${feature.attributes.Comment} (Rating: ${feature.attributes.Rating})</p>`;
+            reviewsSection.innerHTML += `<p>${feature.attributes.Username}: ${feature.attributes.Comments} (Rating: ${feature.attributes.Rating})</p>`;  // 替换为 Comments
           });
         });
       }
@@ -196,15 +196,15 @@
       // 提交评论和评分
       window.submitReview = function(attractionId) {
         var rating = document.getElementById("rating").value;
-        var comment = document.getElementById("comment").value;
+        var comments = document.getElementById("comment").value;  // 替换为 comments
 
         var newReview = {
           geometry: null, // 评论不需要空间几何
           attributes: {
             AttractionID: attractionId,
             Rating: parseInt(rating),
-            Comment: comment,
-            Username: "anonymous" // 可以扩展为真实用户名
+            Comments: comments,  // 替换为 Comments
+            Username: "anonymous" // 可以替换为实际用户名
           }
         };
 
