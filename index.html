@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add and Rate Attractions</title>
+  <style>
+    #addButton {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      padding: 10px 20px;
+      background-color: #007acc;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    #viewDiv {
+      height: 100vh;
+      width: 100vw;
+    }
+  </style>
+</head>
+<body>
+  <div id="viewDiv"></div>
+  <button id="addButton">Add my attraction</button>
+
+  <script src="https://js.arcgis.com/4.22/"></script>
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/FeatureLayer"
+    ], function(Map, MapView, FeatureLayer) {
+
+      // 定义是否处于编辑模式
+      var isEditing = false;
+
+      // 初始化地图
+      var map = new Map({
+        basemap: "topo-vector"
+      });
+
+      var view = new MapView({
+        container: "viewDiv",
+        map: map,
+        center: [-100, 40], // 地图中心
+        zoom: 4 // 缩放级别
+      });
+
+      // 添加 OpenStreetMap 景点图层
+      var osmAttractionsLayer = new FeatureLayer({
+        url: "YOUR_OSM_FEATURE_LAYER_URL"  // 替换为 OSM 数据集的 URL
+      });
+
+      // 添加用户自定义景点的 Feature Layer
+      var attractionsLayer = new FeatureLayer({
+        url: "YOUR_CUSTOM_FEATURE_LAYER_URL"  // 这里替换为你创建的自定义景点 Feature Layer URL
+      });
+
+      // 添加用于存储评论和评分的图层
+      var reviewLayer = new FeatureLayer({
+        url: "YOUR_REVIEW_LAYER_URL"  // 替换为存储评论和评分的图层 URL
+      });
+
+      map.addMany([osmAttractionsLayer, attractionsLayer]);
+
+      // 监听添加景点按钮
+      document.getElementById("addButton").addEventListener("click", function() {
+        isEditing = true;
+        this.innerText = "Click on the map to add a new attraction";
+        this.style.backgroundColor = "#ff8800";
+      });
+
+      // 地图点击事件，添加新的景点
+      view.on("click", function(event) {
+        if (isEditing) {
+          var point = event.mapPoint;
+          openAddAttractionForm(point);
+        } else {
+          view.hitTest(event).then(function(response) {
+            if (response.results.length > 0) {
+              var feature = response.results[0].graphic;
+              openPopupForAttraction(feature);
+            }
+          });
+        }
+      });
+
+      // 打开输入表单，用户输入新景点信息
+      function openAddAttractionForm(point) {
+        var formHtml = `
+          <div id="attractionForm" style="position: absolute; top: 20px; left: 20px; background: white; padding: 10px;">
+            <h3>Add a new attraction</h3>
+            <label for="name">Name:</label>
+            <input type="text" id="name" placeholder="Attraction Name"><br>
+            <label for="type">Type:</label>
+            <input type="text" id="type" placeholder="Attraction Type (e.g., museum, park)"><br>
+            <label for="description">Description:</label>
+            <textarea id="description" placeholder="Describe the attraction"></textarea><br>
+            <button onclick="submitAttraction(${point.longitude}, ${point.latitude})">Submit</button>
+          </div>
+        `;
+        document.body.insertAdjacentHTML("beforeend", formHtml); // 将表单插入页面
+      }
+
+      // 提交新景点信息
+      window.submitAttraction = function(longitude, latitude) {
+        var name = document.getElementById("name").value;
+        var type = document.getElementById("type").value;
+        var description = document.getElementById("description").value;
+
+        var newFeature = {
+          geometry: {
+            type: "point",
+            longitude: longitude,
+            latitude: latitude
+          },
+          attributes: {
+            Name: name,
+            Type: type,
+            Description: description
+          }
+        };
+
+        attractionsLayer.applyEdits({
+          addFeatures: [newFeature]
+        }).then(function(response) {
+          console.log("Attraction added successfully:", response);
+          document.getElementById("attractionForm").remove(); // 成功后移除表单
+          isEditing = false;
+          document.getElementById("addButton").innerText = "Add my attraction";
+          document.getElementById("addButton").style.backgroundColor = "#007acc";
+        }).catch(function(error) {
+          console.error("Error adding attraction:", error);
+        });
+      };
+
+      // 打开现有景点的弹出窗口，包含评论和评分
+      function openPopupForAttraction(feature) {
+        var attractionId = feature.attributes.OBJECTID;
+
+        view.popup.open({
+          title: feature.attributes.name,
+          content: `
+            <p>${feature.attributes.description}</p>
+            <h3>Average Rating: <span id="averageRating"></span></h3>
+            <label for="rating">Your Rating (1-5):</label>
+            <input type="number" id="rating" min="1" max="5"><br>
+            <label for="comment">Your Comment:</label>
+            <textarea id="comment" placeholder="Add your comment"></textarea><br>
+            <button onclick="submitReview(${attractionId})">Submit</button>
+            <div id="reviews-section"></div>
+          `,
+          location: feature.geometry
+        });
+
+        calculateAverageRating(attractionId);
+        loadReviews(attractionId);
+      }
+
+      // 计算该景点的平均评分
+      function calculateAverageRating(attractionId) {
+        var query = reviewLayer.createQuery();
+        query.where = `AttractionID = '${attractionId}'`;
+
+        reviewLayer.queryFeatures(query).then(function(result) {
+          var totalRating = 0;
+          var totalReviews = result.features.length;
+
+          result.features.forEach(function(feature) {
+            totalRating += feature.attributes.Rating;
+          });
+
+          var averageRating = totalReviews > 0 ? (totalRating / totalReviews).toFixed(2) : "No ratings yet";
+          document.getElementById("averageRating").innerText = averageRating;
+        });
+      }
+
+      // 加载并显示评论
+      function loadReviews(attractionId) {
+        var query = reviewLayer.createQuery();
+        query.where = `AttractionID = '${attractionId}'`;
+
+        reviewLayer.queryFeatures(query).then(function(result) {
+          var reviewsSection = document.getElementById("reviews-section");
+          reviewsSection.innerHTML = "";
+
+          result.features.forEach(function(feature) {
+            reviewsSection.innerHTML += `<p>${feature.attributes.Username}: ${feature.attributes.Comment} (Rating: ${feature.attributes.Rating})</p>`;
+          });
+        });
+      }
+
+      // 提交评论和评分
+      window.submitReview = function(attractionId) {
+        var rating = document.getElementById("rating").value;
+        var comment = document.getElementById("comment").value;
+
+        var newReview = {
+          geometry: null, // 评论不需要空间几何
+          attributes: {
+            AttractionID: attractionId,
+            Rating: parseInt(rating),
+            Comment: comment,
+            Username: "anonymous" // 可以扩展为真实用户名
+          }
+        };
+
+        reviewLayer.applyEdits({
+          addFeatures: [newReview]
+        }).then(function() {
+          console.log("Review added successfully");
+          calculateAverageRating(attractionId);
+          loadReviews(attractionId);
+        }).catch(function(error) {
+          console.error("Error adding review:", error);
+        });
+      };
+    });
+  </script>
+</body>
+</html>
