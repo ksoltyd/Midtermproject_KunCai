@@ -35,35 +35,61 @@
     ], function(Map, MapView, FeatureLayer) {
 
       // 定义是否处于编辑模式
-      var isEditing = false;
+      let isEditing = false;
 
       // 初始化地图
-      var map = new Map({
+      const map = new Map({
         basemap: "topo-vector"
       });
 
-      var view = new MapView({
+      const view = new MapView({
         container: "viewDiv",
         map: map,
         center: [-100, 40], // 地图中心
         zoom: 4 // 缩放级别
       });
 
-      // 加载 OpenStreetMap 和 My Attraction 图层
-      var osmAttractionsLayer = new FeatureLayer({
-        url: "https://services6.arcgis.com/Do88DoK2xjTUCXd1/arcgis/rest/services/OSM_NA_Tourism/FeatureServer"  // 替换为 OpenStreetMap 数据集的 URL
+      // Popup templates for different layers
+      const popupOsmAttraction = {
+        title: "{name}",
+        content:
+         `<b>OBJECTID:</b> {OBJECTID}<br>
+          <b>Name:</b> {name}<br>
+          <b>Type:</b> {tourism}<br>
+          <b>Description:</b> {description}<br>
+          <b>website:</b> {website}<br>
+        `
+      };
+
+      const popupMyAttraction = {
+        title: "{Name}",
+        content: `
+          <b>Attraction Name:</b> {Name}<br>
+          <b>Attraction Type:</b> {Type}<br>
+          <b>Description:</b> {Description}
+        `
+      };
+
+      // Define the FeatureLayer for OpenStreetMap attractions
+      const osmAttractionsLayer = new FeatureLayer({
+        url: "https://services6.arcgis.com/Do88DoK2xjTUCXd1/arcgis/rest/services/OSM_NA_Tourism/FeatureServer",
+        outFields: ["OBJECTID","name", "tourism", "description","website"],
+        popupTemplate: popupOsmAttraction  // Use the defined popup template
       });
 
-      var myAttractionsLayer = new FeatureLayer({
-        url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/My_Attraction/FeatureServer"  // 替换为 My Attraction 的 URL
+      // Define the FeatureLayer for My Attractions
+      const myAttractionsLayer = new FeatureLayer({
+        url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/My_Attraction/FeatureServer",
+        outFields: ["Name", "Type", "Description"],
+        popupTemplate: popupMyAttraction  // Use the defined popup template
       });
 
-      // 加载用于存储评论和评分的图层
-      var reviewLayer = new FeatureLayer({
-        url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/Comments_and_Rating/FeatureServer"  // 替换为存储评论和评分的图层 URL
+      // Define the FeatureLayer for Comments and Rating (no popup needed here)
+      const reviewLayer = new FeatureLayer({
+        url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/Comments_and_Rating/FeatureServer"
       });
 
-      // 将图层添加到地图中
+      // Adding layers to the map
       map.addMany([osmAttractionsLayer, myAttractionsLayer]);
 
       // 监听添加景点按钮
@@ -73,16 +99,19 @@
         this.style.backgroundColor = "#ff8800";
       });
 
-      // 地图点击事件，添加新景点或显示评论和评分
+      // 地图点击事件，处理添加新景点或显示评论和评分
       view.on("click", function(event) {
         if (isEditing) {
-          var point = event.mapPoint;
+          const point = event.mapPoint;
           openAddAttractionForm(point);
         } else {
           view.hitTest(event).then(function(response) {
             if (response.results.length > 0) {
-              var feature = response.results[0].graphic;
-              openPopupForAttraction(feature);
+              const feature = response.results[0].graphic;
+              view.popup.open({
+                features: [feature],
+                location: event.mapPoint  // 弹出窗口显示在点击的位置
+              });
             }
           });
         }
@@ -90,7 +119,7 @@
 
       // 打开输入表单，用户输入新景点信息
       function openAddAttractionForm(point) {
-        var formHtml = `
+        const formHtml = `
           <div id="attractionForm" style="position: absolute; top: 20px; left: 20px; background: white; padding: 10px;">
             <h3>Add a new attraction</h3>
             <label for="name">Name:</label>
@@ -107,11 +136,11 @@
 
       // 提交新景点信息
       window.submitAttraction = function(longitude, latitude) {
-        var name = document.getElementById("name").value;
-        var type = document.getElementById("type").value;
-        var description = document.getElementById("description").value;
+        const name = document.getElementById("name").value;
+        const type = document.getElementById("type").value;
+        const description = document.getElementById("description").value;
 
-        var newFeature = {
+        const newFeature = {
           geometry: {
             type: "point",
             longitude: longitude,
@@ -137,73 +166,32 @@
         });
       };
 
-      // 打开现有景点的弹出窗口，包含评论和评分
-      function openPopupForAttraction(feature) {
-        var attractionId = feature.attributes.OBJECTID;  // 使用景点的 OBJECTID 作为 AttractionID
-
-        view.popup.open({
-          title: feature.attributes.Name,
-          content: `
-            <p>${feature.attributes.Description}</p>
-            <h3>Average Rating: <span id="averageRating"></span></h3>
-            <label for="rating">Your Rating (1-5):</label>
-            <input type="number" id="rating" min="1" max="5"><br>
-            <label for="comment">Your Comment:</label>
-            <textarea id="comment" placeholder="Add your comment"></textarea><br>
-            <button onclick="submitReview(${attractionId})">Submit</button>
-            <div id="reviews-section"></div>
-          `,
-          location: feature.geometry
-        });
-
-        calculateAverageRating(attractionId);
-        loadReviews(attractionId);
-      }
-
-      // 计算平均评分
-      function calculateAverageRating(attractionId) {
-        var query = reviewLayer.createQuery();
-        query.where = `AttractionID = '${attractionId}'`;
-
-        reviewLayer.queryFeatures(query).then(function(result) {
-          var totalRating = 0;
-          var totalReviews = result.features.length;
-
-          result.features.forEach(function(feature) {
-            totalRating += feature.attributes.Rating;
-          });
-
-          var averageRating = totalReviews > 0 ? (totalRating / totalReviews).toFixed(2) : "No ratings yet";
-          document.getElementById("averageRating").innerText = averageRating;
-        });
-      }
-
-      // 加载评论
+      // 加载评论和评分
       function loadReviews(attractionId) {
-        var query = reviewLayer.createQuery();
+        const query = reviewLayer.createQuery();
         query.where = `AttractionID = '${attractionId}'`;
 
         reviewLayer.queryFeatures(query).then(function(result) {
-          var reviewsSection = document.getElementById("reviews-section");
+          const reviewsSection = document.getElementById("reviews-section");
           reviewsSection.innerHTML = "";
 
           result.features.forEach(function(feature) {
-            reviewsSection.innerHTML += `<p>${feature.attributes.Username}: ${feature.attributes.Comments} (Rating: ${feature.attributes.Rating})</p>`;  // 替换为 Comments
+            reviewsSection.innerHTML += `<p>${feature.attributes.Username}: ${feature.attributes.Comments} (Rating: ${feature.attributes.Rating})</p>`;
           });
         });
       }
 
       // 提交评论和评分
       window.submitReview = function(attractionId) {
-        var rating = document.getElementById("rating").value;
-        var comments = document.getElementById("comment").value;  // 替换为 comments
+        const rating = document.getElementById("rating").value;
+        const comments = document.getElementById("comment").value;
 
-        var newReview = {
+        const newReview = {
           geometry: null, // 评论不需要空间几何
           attributes: {
             AttractionID: attractionId,
             Rating: parseInt(rating),
-            Comments: comments,  // 替换为 Comments
+            Comments: comments,
             Username: "anonymous" // 可以替换为实际用户名
           }
         };
@@ -218,6 +206,25 @@
           console.error("Error adding review:", error);
         });
       };
+
+      // 计算平均评分
+      function calculateAverageRating(attractionId) {
+        const query = reviewLayer.createQuery();
+        query.where = `AttractionID = '${attractionId}'`;
+
+        reviewLayer.queryFeatures(query).then(function(result) {
+          let totalRating = 0;
+          const totalReviews = result.features.length;
+
+          result.features.forEach(function(feature) {
+            totalRating += feature.attributes.Rating;
+          });
+
+          const averageRating = totalReviews > 0 ? (totalRating / totalReviews).toFixed(2) : "No ratings yet";
+          document.getElementById("averageRating").innerText = averageRating;
+        });
+      }
+
     });
   </script>
 </body>
