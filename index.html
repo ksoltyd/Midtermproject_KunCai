@@ -65,7 +65,7 @@
         title: "{Name}",
         content: `
           <b>Attraction Name:</b> {Name}<br>
-          <b>Attraction Type:</b> {Type}<br>
+          <b>Attraction Type:</b> {Att_Type}<br>
           <b>Description:</b> {Description}
         `
       };
@@ -80,7 +80,7 @@
       // Define the FeatureLayer for My Attractions
       const myAttractionsLayer = new FeatureLayer({
         url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/My_Attraction/FeatureServer",
-        outFields: ["Name", "Type", "Description"],
+        outFields: ["Name", "Att_Type", "Description"],
         popupTemplate: popupMyAttraction  // Use the defined popup template
       });
 
