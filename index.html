@@ -159,6 +159,11 @@
               } else {
                 console.log("No attributes found for the feature");
               }
+
+              // 确认弹出内容是否正确生成
+              const popupContent = feature.layer.popupTemplate ? feature.layer.popupTemplate.content : "No popup template available";
+              console.log("Popup content before displaying:", popupContent);
+
               view.popup.open({
                 features: [feature],
                 location: event.mapPoint  // 弹出窗口显示在点击的位置
