@@ -54,10 +54,10 @@
         title: "{name}",
         content: `
           <b>OBJECTID:</b> {OBJECTID}<br>
-          <b>Name:</b> {name}<br>
-          <b>Type:</b> {tourism}<br>
-          <b>Description:</b> {description}<br>
-          <b>Website:</b> <a href="{website}" target="_blank">{website}</a><br>
+          <b>Name:</b> {name ? name : "No name available"}<br>
+          <b>Type:</b> {tourism ? tourism : "No type available"}<br>
+          <b>Description:</b> {description ? description : "No description available"}<br>
+          <b>Website:</b> {website ? '<a href="' + website + '" target="_blank">' + website + '</a>' : "No website available"}<br>
         `
       };
 
@@ -65,8 +65,8 @@
         title: "{Name}",
         content: `
           <b>Attraction Name:</b> {Name}<br>
-          <b>Attraction Type:</b> {Att_Type}<br>
-          <b>Description:</b> {Description}
+          <b>Attraction Type:</b> {Att_Type ? Att_Type : "No type available"}<br>
+          <b>Description:</b> {Description ? Description : "No description available"}
         `
       };
 
