@@ -74,6 +74,7 @@
       });
 
       function createPopupTemplate(layerName) {
+        console.log(`Creating popup template for ${layerName}`);
         return {
           title: layerName === "osmAttractionsLayer" ? "{name}" : "{Name}",
           content: [
@@ -145,7 +146,11 @@
         outFields: ["OBJECTID", "AttractionID", "Comments", "Username", "Rating"]
       });
 
-      map.addMany([osmAttractionsLayer, myAttractionsLayer, commentsLayer]);
+      map.addMany([osmAttractionsLayer, myAttractionsLayer, commentsLayer]).then(() => {
+        console.log("All layers added successfully");
+      }).catch(error => {
+        console.error("Error adding layers:", error);
+      });
 
       view.popup = new Popup({
         dockEnabled: true,
@@ -158,10 +163,13 @@
         isEditing = true;
         this.innerText = "Click on the map to add a new attraction";
         this.style.backgroundColor = "#ff8800";
+        console.log("Add button clicked, editing mode enabled");
       });
 
       view.on("click", function(event) {
+        console.log("Map clicked", event);
         if (isEditing) {
+          console.log("Editing mode active");
           openAddAttractionForm(event.mapPoint);
         } else {
           view.hitTest(event).then(function(response) {
@@ -178,6 +186,7 @@
                 location: event.mapPoint
               });
             } else {
+              console.log("No feature found at click location");
               view.popup.close();
             }
           });
@@ -185,6 +194,7 @@
       });
 
       function openAddAttractionForm(point) {
+        console.log("Opening add attraction form", point);
         const formHtml = `
           <div id="attractionForm" style="position: absolute; top: 20px; left: 20px; background: white; padding: 10px; z-index: 1000;">
             <h3>Add a new attraction</h3>
@@ -205,6 +215,7 @@
       }
 
       window.submitAttraction = function(longitude, latitude) {
+        console.log("Submitting new attraction", {longitude, latitude});
         const name = document.getElementById("name").value;
         const type = document.getElementById("type").value;
         const description = document.getElementById("description").value;
@@ -253,7 +264,7 @@
           commentsLayer.applyEdits({
             addFeatures: [newComment]
           }).then(function(result) {
-            console.log("Comment added successfully");
+            console.log("Comment added successfully", result);
             loadComments(feature, document.getElementById("commentsDiv"));
           }).catch(function(error) {
             console.error("Error adding comment:", error);
@@ -279,7 +290,7 @@
           commentsLayer.applyEdits({
             addFeatures: [newRating]
           }).then(function(result) {
-            console.log("Rating added successfully");
+            console.log("Rating added successfully", result);
             loadComments(feature, document.getElementById("commentsDiv"));
           }).catch(function(error) {
             console.error("Error adding rating:", error);
@@ -297,6 +308,7 @@
         query.outFields = ["Comments", "Username", "Rating"];
 
         commentsLayer.queryFeatures(query).then(function(result) {
+          console.log("Comments query result:", result);
           let commentsHtml = "";
           result.features.forEach(function(feature) {
             const attributes = feature.attributes;
