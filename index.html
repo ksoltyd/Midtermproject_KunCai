@@ -73,7 +73,7 @@
       // Define the FeatureLayer for OpenStreetMap attractions
       const osmAttractionsLayer = new FeatureLayer({
         url: "https://services6.arcgis.com/Do88DoK2xjTUCXd1/arcgis/rest/services/OSM_NA_Tourism/FeatureServer",
-        outFields: ["OBJECTID","name", "tourism", "description","website"],
+        outFields: ["OBJECTID", "name", "tourism", "description", "website"],
         popupTemplate: popupOsmAttraction  // Use the defined popup template
       });
 
@@ -91,6 +91,44 @@
 
       // Adding layers to the map
       map.addMany([osmAttractionsLayer, myAttractionsLayer]);
+
+      // 确认 osmAttractionsLayer 加载成功后检查字段名
+      osmAttractionsLayer.when(() => {
+        osmAttractionsLayer.queryFeatures({
+          where: "1=1",  // 查询所有要素
+          outFields: ["*"],  // 获取所有字段
+          returnGeometry: false
+        }).then(function(results) {
+          if (results.features.length > 0) {
+            console.log("Available fields in OSM Attractions Layer:", results.features[0].attributes);
+          } else {
+            console.log("No features found in OSM Attractions Layer");
+          }
+        }).catch(function(error) {
+          console.error("Error querying features:", error);
+        });
+      }, (error) => {
+        console.error("Error loading OSM Attractions Layer:", error);
+      });
+
+      // 同样可以为 myAttractionsLayer 检查字段
+      myAttractionsLayer.when(() => {
+        myAttractionsLayer.queryFeatures({
+          where: "1=1",  // 查询所有要素
+          outFields: ["*"],  // 获取所有字段
+          returnGeometry: false
+        }).then(function(results) {
+          if (results.features.length > 0) {
+            console.log("Available fields in My Attractions Layer:", results.features[0].attributes);
+          } else {
+            console.log("No features found in My Attractions Layer");
+          }
+        }).catch(function(error) {
+          console.error("Error querying features:", error);
+        });
+      }, (error) => {
+        console.error("Error loading My Attractions Layer:", error);
+      });
 
       // 监听添加景点按钮
       document.getElementById("addButton").addEventListener("click", function() {
@@ -110,7 +148,7 @@
 
             if (response.results.length > 0) {
               const feature = response.results[0].graphic;
-              console.log("Feature found:", feature);  // 调试日志
+              console.log("Feature found:", feature);  // 打印找到的 feature 信息
               view.popup.open({
                 features: [feature],
                 location: event.mapPoint  // 弹出窗口显示在点击的位置
@@ -175,65 +213,6 @@
           console.error("Error adding attraction:", error);
         });
       };
-
-      // 加载评论和评分
-      function loadReviews(attractionId) {
-        const query = reviewLayer.createQuery();
-        query.where = `AttractionID = '${attractionId}'`;
-
-        reviewLayer.queryFeatures(query).then(function(result) {
-          const reviewsSection = document.getElementById("reviews-section");
-          reviewsSection.innerHTML = "";
-
-          result.features.forEach(function(feature) {
-            reviewsSection.innerHTML += `<p>${feature.attributes.Username}: ${feature.attributes.Comments} (Rating: ${feature.attributes.Rating})</p>`;
-          });
-        });
-      }
-
-      // 提交评论和评分
-      window.submitReview = function(attractionId) {
-        const rating = document.getElementById("rating").value;
-        const comments = document.getElementById("comment").value;
-
-        const newReview = {
-          geometry: null, // 评论不需要空间几何
-          attributes: {
-            AttractionID: attractionId,
-            Rating: parseInt(rating),
-            Comments: comments,
-            Username: "anonymous" // 可以替换为实际用户名
-          }
-        };
-
-        reviewLayer.applyEdits({
-          addFeatures: [newReview]
-        }).then(function() {
-          console.log("Review added successfully");
-          calculateAverageRating(attractionId);
-          loadReviews(attractionId);
-        }).catch(function(error) {
-          console.error("Error adding review:", error);
-        });
-      };
-
-      // 计算平均评分
-      function calculateAverageRating(attractionId) {
-        const query = reviewLayer.createQuery();
-        query.where = `AttractionID = '${attractionId}'`;
-
-        reviewLayer.queryFeatures(query).then(function(result) {
-          let totalRating = 0;
-          const totalReviews = result.features.length;
-
-          result.features.forEach(function(feature) {
-            totalRating += feature.attributes.Rating;
-          });
-
-          const averageRating = totalReviews > 0 ? (totalRating / totalReviews).toFixed(2) : "No ratings yet";
-          document.getElementById("averageRating").innerText = averageRating;
-        });
-      }
 
     });
   </script>
