@@ -4,7 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Add and Rate Attractions</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.24/esri/themes/light/main.css">
   <style>
+    html, body, #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+    }
     #addButton {
       position: absolute;
       top: 20px;
@@ -15,10 +22,7 @@
       border: none;
       cursor: pointer;
       font-size: 16px;
-    }
-    #viewDiv {
-      height: 100vh;
-      width: 100vw;
+      z-index: 1000;
     }
   </style>
 </head>
@@ -31,13 +35,13 @@
     require([
       "esri/Map",
       "esri/views/MapView",
-      "esri/layers/FeatureLayer"
-    ], function(Map, MapView, FeatureLayer) {
+      "esri/layers/FeatureLayer",
+      "esri/widgets/Popup",
+      "esri/Graphic"
+    ], function(Map, MapView, FeatureLayer, Popup, Graphic) {
 
-      // 定义是否处于编辑模式
       let isEditing = false;
 
-      // 初始化地图
       const map = new Map({
         basemap: "topo-vector"
       });
@@ -45,95 +49,88 @@
       const view = new MapView({
         container: "viewDiv",
         map: map,
-        center: [-100, 40], // 地图中心
-        zoom: 4 // 缩放级别
+        center: [-100, 40],
+        zoom: 4
       });
 
-      // Define the FeatureLayer for OpenStreetMap attractions
       const osmAttractionsLayer = new FeatureLayer({
         url: "https://services6.arcgis.com/Do88DoK2xjTUCXd1/arcgis/rest/services/OSM_NA_Tourism/FeatureServer",
         outFields: ["OBJECTID", "name", "tourism", "description", "website"],
         popupTemplate: {
           title: "{name}",
-          content: `
-            <b>OBJECTID:</b> {OBJECTID}<br>
-            <b>Name:</b> {name ? name : "No name available"}<br>
-            <b>Type:</b> {tourism ? tourism : "No type available"}<br>
-            <b>Description:</b> {description ? description : "No description available"}<br>
-            <b>Website:</b> {website ? '<a href="' + website + '" target="_blank">' + website + '</a>' : "No website available"}<br>
-          `
+          content: [
+            {
+              type: "fields",
+              fieldInfos: [
+                { fieldName: "OBJECTID", label: "OBJECTID" },
+                { fieldName: "name", label: "Name" },
+                { fieldName: "tourism", label: "Type" },
+                { fieldName: "description", label: "Description" },
+                { fieldName: "website", label: "Website" }
+              ]
+            }
+          ]
         }
       });
 
-      // Define the FeatureLayer for My Attractions
       const myAttractionsLayer = new FeatureLayer({
         url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/My_Attraction/FeatureServer",
         outFields: ["Name", "Att_Type", "Description"],
         popupTemplate: {
           title: "{Name}",
-          content: `
-            <b>Attraction Name:</b> {Name}<br>
-            <b>Attraction Type:</b> {Att_Type ? Att_Type : "No type available"}<br>
-            <b>Description:</b> {Description ? Description : "No description available"}
-          `
+          content: [
+            {
+              type: "fields",
+              fieldInfos: [
+                { fieldName: "Name", label: "Attraction Name" },
+                { fieldName: "Att_Type", label: "Attraction Type" },
+                { fieldName: "Description", label: "Description" }
+              ]
+            }
+          ]
         }
       });
 
-      // Define the FeatureLayer for Comments and Rating (no popup needed here)
-      const reviewLayer = new FeatureLayer({
-        url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/Comments_and_Rating/FeatureServer"
-      });
-
-      // Adding layers to the map
       map.addMany([osmAttractionsLayer, myAttractionsLayer]);
 
-      // 监听添加景点按钮
+      view.popup = new Popup({
+        dockEnabled: true,
+        dockOptions: {
+          position: "auto"
+        }
+      });
+
       document.getElementById("addButton").addEventListener("click", function() {
         isEditing = true;
         this.innerText = "Click on the map to add a new attraction";
         this.style.backgroundColor = "#ff8800";
       });
 
-      // 地图点击事件，处理添加新景点或显示评论和评分
       view.on("click", function(event) {
         if (isEditing) {
-          const point = event.mapPoint;
-          openAddAttractionForm(point);
+          openAddAttractionForm(event.mapPoint);
         } else {
           view.hitTest(event).then(function(response) {
-            console.log("Hit test response:", response);  // 调试日志
+            const result = response.results.find(result => 
+              result.graphic.layer === osmAttractionsLayer || result.graphic.layer === myAttractionsLayer
+            );
 
-            // 过滤只属于 osmAttractionsLayer 或 myAttractionsLayer 的结果
-            const results = response.results.filter(result => {
-              return result.graphic.layer === osmAttractionsLayer || result.graphic.layer === myAttractionsLayer;
-            });
-
-            if (results.length > 0) {
-              const feature = results[0].graphic;
-              console.log("Feature found:", feature);  // 打印找到的 feature 信息
-              if (feature.attributes) {
-                console.log("Feature attributes:", feature.attributes);  // 打印 feature 的属性信息
-              } else {
-                console.log("No attributes found for the feature");
-              }
-
+            if (result) {
+              const graphic = result.graphic;
               view.popup.open({
-                features: [feature],
-                location: event.mapPoint  // 弹出窗口显示在点击的位置
+                features: [graphic],
+                location: event.mapPoint
               });
             } else {
-              console.log("No features found on click");
+              view.popup.close();
             }
-          }).catch(function(error) {
-            console.error("Error during hitTest:", error);
           });
         }
       });
 
-      // 打开输入表单，用户输入新景点信息
       function openAddAttractionForm(point) {
         const formHtml = `
-          <div id="attractionForm" style="position: absolute; top: 20px; left: 20px; background: white; padding: 10px;">
+          <div id="attractionForm" style="position: absolute; top: 20px; left: 20px; background: white; padding: 10px; z-index: 1000;">
             <h3>Add a new attraction</h3>
             <label for="name">Name:</label>
             <input type="text" id="name" placeholder="Attraction Name"><br>
@@ -146,19 +143,17 @@
         `;
         document.body.insertAdjacentHTML("beforeend", formHtml);
 
-        // 监听提交按钮的点击事件
         document.getElementById("submitAttractionButton").addEventListener("click", function() {
           submitAttraction(point.longitude, point.latitude);
         });
       }
 
-      // 提交新景点信息
       window.submitAttraction = function(longitude, latitude) {
         const name = document.getElementById("name").value;
         const type = document.getElementById("type").value;
         const description = document.getElementById("description").value;
 
-        const newFeature = {
+        const newFeature = new Graphic({
           geometry: {
             type: "point",
             longitude: longitude,
@@ -166,15 +161,15 @@
           },
           attributes: {
             Name: name,
-            Att_Type: type,  // 确保字段名与图层一致
+            Att_Type: type,
             Description: description
           }
-        };
+        });
 
         myAttractionsLayer.applyEdits({
           addFeatures: [newFeature]
-        }).then(function(response) {
-          console.log("Attraction added successfully:", response);
+        }).then(function(result) {
+          console.log("Attraction added successfully:", result);
           document.getElementById("attractionForm").remove();
           isEditing = false;
           document.getElementById("addButton").innerText = "Add my attraction";
@@ -187,4 +182,4 @@
     });
   </script>
 </body>
-</html>909
+</html>
