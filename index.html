@@ -37,6 +37,13 @@
       margin: 2px 2px;
       cursor: pointer;
     }
+    #commentsDiv {
+      margin-top: 10px;
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 10px;
+    }
   </style>
 </head>
 <body>
@@ -105,13 +112,11 @@
                 div.appendChild(addCommentBtn);
                 div.appendChild(addRatingBtn);
 
-                // 添加显示评论和评分的区域
                 const commentsDiv = document.createElement("div");
                 commentsDiv.id = "commentsDiv";
                 commentsDiv.innerHTML = "<h4>Comments and Ratings</h4>";
                 div.appendChild(commentsDiv);
 
-                // 加载并显示评论和评分
                 loadComments(feature, commentsDiv);
 
                 return div;
@@ -176,11 +181,54 @@
       });
 
       function openAddAttractionForm(point) {
-        // ... (保持不变)
+        const formHtml = `
+          <div id="attractionForm" style="position: absolute; top: 20px; left: 20px; background: white; padding: 10px; z-index: 1000;">
+            <h3>Add a new attraction</h3>
+            <label for="name">Name:</label>
+            <input type="text" id="name" placeholder="Attraction Name"><br>
+            <label for="type">Type:</label>
+            <input type="text" id="type" placeholder="Attraction Type (e.g., museum, park)"><br>
+            <label for="description">Description:</label>
+            <textarea id="description" placeholder="Describe the attraction"></textarea><br>
+            <button id="submitAttractionButton">Submit</button>
+          </div>
+        `;
+        document.body.insertAdjacentHTML("beforeend", formHtml);
+
+        document.getElementById("submitAttractionButton").addEventListener("click", function() {
+          submitAttraction(point.longitude, point.latitude);
+        });
       }
 
       window.submitAttraction = function(longitude, latitude) {
-        // ... (保持不变)
+        const name = document.getElementById("name").value;
+        const type = document.getElementById("type").value;
+        const description = document.getElementById("description").value;
+
+        const newFeature = new Graphic({
+          geometry: {
+            type: "point",
+            longitude: longitude,
+            latitude: latitude
+          },
+          attributes: {
+            Name: name,
+            Att_Type: type,
+            Description: description
+          }
+        });
+
+        myAttractionsLayer.applyEdits({
+          addFeatures: [newFeature]
+        }).then(function(result) {
+          console.log("Attraction added successfully:", result);
+          document.getElementById("attractionForm").remove();
+          isEditing = false;
+          document.getElementById("addButton").innerText = "Add my attraction";
+          document.getElementById("addButton").style.backgroundColor = "#007acc";
+        }).catch(function(error) {
+          console.error("Error adding attraction:", error);
+        });
       };
 
       function addComment(feature) {
