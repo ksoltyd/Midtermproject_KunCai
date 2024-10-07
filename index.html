@@ -146,10 +146,17 @@
         outFields: ["OBJECTID", "AttractionID", "Comments", "Username", "Rating"]
       });
 
-      map.addMany([osmAttractionsLayer, myAttractionsLayer, commentsLayer]).then(() => {
-        console.log("All layers added successfully");
-      }).catch(error => {
-        console.error("Error adding layers:", error);
+      view.when(() => {
+        console.log("Map view is ready");
+        Promise.resolve(map.addMany([osmAttractionsLayer, myAttractionsLayer, commentsLayer]))
+          .then(() => {
+            console.log("All layers added successfully");
+          })
+          .catch(error => {
+            console.error("Error adding layers:", error);
+          });
+      }, (error) => {
+        console.error("Error in creating map view:", error);
       });
 
       view.popup = new Popup({
@@ -173,22 +180,28 @@
           openAddAttractionForm(event.mapPoint);
         } else {
           view.hitTest(event).then(function(response) {
-            console.log("Hit test response:", response);
-            const result = response.results.find(result => 
-              result.graphic.layer === osmAttractionsLayer || result.graphic.layer === myAttractionsLayer
-            );
+            try {
+              console.log("Hit test response:", response);
+              const result = response.results.find(result => 
+                result.graphic.layer === osmAttractionsLayer || result.graphic.layer === myAttractionsLayer
+              );
 
-            if (result) {
-              const graphic = result.graphic;
-              console.log("Feature clicked:", graphic);
-              view.popup.open({
-                features: [graphic],
-                location: event.mapPoint
-              });
-            } else {
-              console.log("No feature found at click location");
-              view.popup.close();
+              if (result) {
+                const graphic = result.graphic;
+                console.log("Feature clicked:", graphic);
+                view.popup.open({
+                  features: [graphic],
+                  location: event.mapPoint
+                });
+              } else {
+                console.log("No feature found at click location");
+                view.popup.close();
+              }
+            } catch (error) {
+              console.error("Error in hit test handling:", error);
             }
+          }).catch(error => {
+            console.error("Error in hit test:", error);
           });
         }
       });
