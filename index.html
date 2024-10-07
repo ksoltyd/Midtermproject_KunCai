@@ -146,11 +146,19 @@
           view.hitTest(event).then(function(response) {
             console.log("Hit test response:", response);  // 调试日志
 
-            const results = response.results.filter(result => result.graphic.layer === osmAttractionsLayer || result.graphic.layer === myAttractionsLayer);
+            // 过滤只属于 osmAttractionsLayer 或 myAttractionsLayer 的结果
+            const results = response.results.filter(result => {
+              return result.graphic.layer === osmAttractionsLayer || result.graphic.layer === myAttractionsLayer;
+            });
 
             if (results.length > 0) {
               const feature = results[0].graphic;
               console.log("Feature found:", feature);  // 打印找到的 feature 信息
+              if (feature.attributes) {
+                console.log("Feature attributes:", feature.attributes);  // 打印 feature 的属性信息
+              } else {
+                console.log("No attributes found for the feature");
+              }
               view.popup.open({
                 features: [feature],
                 location: event.mapPoint  // 弹出窗口显示在点击的位置
@@ -158,6 +166,8 @@
             } else {
               console.log("No features found on click");
             }
+          }).catch(function(error) {
+            console.error("Error during hitTest:", error);
           });
         }
       });
