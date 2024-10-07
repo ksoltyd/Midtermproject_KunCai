@@ -95,7 +95,9 @@
             },
             {
               type: "custom",
-              creator: function(feature) {
+              creator: function(event) {
+                const feature = event.graphic;
+                console.log("Popup creator called for feature:", feature);
                 const div = document.createElement("div");
                 const addCommentBtn = document.createElement("button");
                 addCommentBtn.innerText = "Add Comment";
@@ -163,12 +165,14 @@
           openAddAttractionForm(event.mapPoint);
         } else {
           view.hitTest(event).then(function(response) {
+            console.log("Hit test response:", response);
             const result = response.results.find(result => 
               result.graphic.layer === osmAttractionsLayer || result.graphic.layer === myAttractionsLayer
             );
 
             if (result) {
               const graphic = result.graphic;
+              console.log("Feature clicked:", graphic);
               view.popup.open({
                 features: [graphic],
                 location: event.mapPoint
@@ -232,6 +236,7 @@
       };
 
       function addComment(feature) {
+        console.log("Adding comment for feature:", feature);
         const comment = prompt("Enter your comment:");
         const username = prompt("Enter your username:");
         if (comment && username) {
@@ -257,6 +262,7 @@
       }
 
       function addRating(feature) {
+        console.log("Adding rating for feature:", feature);
         const rating = prompt("Enter your rating (1-5):");
         const username = prompt("Enter your username:");
         if (rating && username && !isNaN(rating) && rating >= 1 && rating <= 5) {
@@ -284,6 +290,7 @@
       }
 
       function loadComments(feature, commentsDiv) {
+        console.log("Loading comments for feature:", feature);
         const attractionId = feature.attributes.OBJECTID || feature.attributes.Name;
         const query = commentsLayer.createQuery();
         query.where = `AttractionID = '${attractionId}'`;
