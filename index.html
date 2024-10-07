@@ -31,9 +31,8 @@
     require([
       "esri/Map",
       "esri/views/MapView",
-      "esri/layers/FeatureLayer",
-      "esri/geometry/SpatialReference"
-    ], function(Map, MapView, FeatureLayer, SpatialReference) {
+      "esri/layers/FeatureLayer"
+    ], function(Map, MapView, FeatureLayer) {
 
       // 定义是否处于编辑模式
       let isEditing = false;
@@ -50,53 +49,10 @@
         zoom: 4 // 缩放级别
       });
 
-      // 假设从其他地方获取的 JSON 数据 (例如通过 API 请求)
-      const osmAttractionsData = {
-        features: [
-          {
-            attributes: {
-              OBJECTID: 1,
-              name: "Example Attraction",
-              tourism: "museum",
-              description: "A wonderful place to visit",
-              website: "http://example.com"
-            },
-            geometry: {
-              type: "point",
-              coordinates: [-100, 40]
-            }
-          }
-        ],
-        fields: [
-          { name: "OBJECTID", type: "oid" },
-          { name: "name", type: "string" },
-          { name: "tourism", type: "string" },
-          { name: "description", type: "string" },
-          { name: "website", type: "string" }
-        ],
-        geometryType: "point",
-        spatialReference: { wkid: 4326 }
-      };
-
-      // 使用 JSON 数据创建 FeatureLayer
+      // Define the FeatureLayer for OpenStreetMap attractions
       const osmAttractionsLayer = new FeatureLayer({
-        id: "osmAttractions",
-        source: osmAttractionsData.features.map((feature) => {
-          return {
-            attributes: feature.attributes,
-            geometry: {
-              type: feature.geometry.type,
-              longitude: feature.geometry.coordinates[0],
-              latitude: feature.geometry.coordinates[1],
-              spatialReference: new SpatialReference({ wkid: osmAttractionsData.spatialReference.wkid })
-            }
-          };
-        }),
-        fields: osmAttractionsData.fields,
-        outFields: ["*"],
-        objectIdField: "OBJECTID",
-        geometryType: osmAttractionsData.geometryType,
-        spatialReference: new SpatialReference({ wkid: osmAttractionsData.spatialReference.wkid }),
+        url: "https://services6.arcgis.com/Do88DoK2xjTUCXd1/arcgis/rest/services/OSM_NA_Tourism/FeatureServer",
+        outFields: ["OBJECTID", "name", "tourism", "description", "website"],
         popupTemplate: {
           title: "{name}",
           content: `
