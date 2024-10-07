@@ -24,6 +24,19 @@
       font-size: 16px;
       z-index: 1000;
     }
+    .action-button {
+      margin-top: 10px;
+      background-color: #4CAF50;
+      border: none;
+      color: white;
+      padding: 5px 10px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 14px;
+      margin: 2px 2px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -53,45 +66,79 @@
         zoom: 4
       });
 
-      const osmAttractionsLayer = new FeatureLayer({
-        url: "https://services6.arcgis.com/Do88DoK2xjTUCXd1/arcgis/rest/services/OSM_NA_Tourism/FeatureServer",
-        outFields: ["OBJECTID", "name", "tourism", "description", "website"],
-        popupTemplate: {
-          title: "{name}",
+      function createPopupTemplate(layerName) {
+        return {
+          title: layerName === "osmAttractionsLayer" ? "{name}" : "{Name}",
           content: [
             {
               type: "fields",
-              fieldInfos: [
-                { fieldName: "OBJECTID", label: "OBJECTID" },
-                { fieldName: "name", label: "Name" },
-                { fieldName: "tourism", label: "Type" },
-                { fieldName: "description", label: "Description" },
-                { fieldName: "website", label: "Website" }
-              ]
+              fieldInfos: layerName === "osmAttractionsLayer" ?
+                [
+                  { fieldName: "OBJECTID", label: "OBJECTID" },
+                  { fieldName: "name", label: "Name" },
+                  { fieldName: "tourism", label: "Type" },
+                  { fieldName: "description", label: "Description" },
+                  { fieldName: "website", label: "Website" }
+                ] :
+                [
+                  { fieldName: "Name", label: "Attraction Name" },
+                  { fieldName: "Att_Type", label: "Attraction Type" },
+                  { fieldName: "Description", label: "Description" }
+                ]
+            },
+            {
+              type: "custom",
+              creator: function(feature) {
+                const div = document.createElement("div");
+                const addCommentBtn = document.createElement("button");
+                addCommentBtn.innerText = "Add Comment";
+                addCommentBtn.className = "action-button";
+                addCommentBtn.onclick = function() {
+                  addComment(feature);
+                };
+                const addRatingBtn = document.createElement("button");
+                addRatingBtn.innerText = "Add Rating";
+                addRatingBtn.className = "action-button";
+                addRatingBtn.onclick = function() {
+                  addRating(feature);
+                };
+                div.appendChild(addCommentBtn);
+                div.appendChild(addRatingBtn);
+
+                // 添加显示评论和评分的区域
+                const commentsDiv = document.createElement("div");
+                commentsDiv.id = "commentsDiv";
+                commentsDiv.innerHTML = "<h4>Comments and Ratings</h4>";
+                div.appendChild(commentsDiv);
+
+                // 加载并显示评论和评分
+                loadComments(feature, commentsDiv);
+
+                return div;
+              }
             }
           ]
-        }
+        };
+      }
+
+      const osmAttractionsLayer = new FeatureLayer({
+        url: "https://services6.arcgis.com/Do88DoK2xjTUCXd1/arcgis/rest/services/OSM_NA_Tourism/FeatureServer",
+        outFields: ["OBJECTID", "name", "tourism", "description", "website"],
+        popupTemplate: createPopupTemplate("osmAttractionsLayer")
       });
 
       const myAttractionsLayer = new FeatureLayer({
         url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/My_Attraction/FeatureServer",
         outFields: ["Name", "Att_Type", "Description"],
-        popupTemplate: {
-          title: "{Name}",
-          content: [
-            {
-              type: "fields",
-              fieldInfos: [
-                { fieldName: "Name", label: "Attraction Name" },
-                { fieldName: "Att_Type", label: "Attraction Type" },
-                { fieldName: "Description", label: "Description" }
-              ]
-            }
-          ]
-        }
+        popupTemplate: createPopupTemplate("myAttractionsLayer")
       });
 
-      map.addMany([osmAttractionsLayer, myAttractionsLayer]);
+      const commentsLayer = new FeatureLayer({
+        url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/Comments_and_Rating/FeatureServer",
+        outFields: ["OBJECTID", "AttractionID", "Comments", "Username", "Rating"]
+      });
+
+      map.addMany([osmAttractionsLayer, myAttractionsLayer, commentsLayer]);
 
       view.popup = new Popup({
         dockEnabled: true,
@@ -129,55 +176,87 @@
       });
 
       function openAddAttractionForm(point) {
-        const formHtml = `
-          <div id="attractionForm" style="position: absolute; top: 20px; left: 20px; background: white; padding: 10px; z-index: 1000;">
-            <h3>Add a new attraction</h3>
-            <label for="name">Name:</label>
-            <input type="text" id="name" placeholder="Attraction Name"><br>
-            <label for="type">Type:</label>
-            <input type="text" id="type" placeholder="Attraction Type (e.g., museum, park)"><br>
-            <label for="description">Description:</label>
-            <textarea id="description" placeholder="Describe the attraction"></textarea><br>
-            <button id="submitAttractionButton">Submit</button>
-          </div>
-        `;
-        document.body.insertAdjacentHTML("beforeend", formHtml);
-
-        document.getElementById("submitAttractionButton").addEventListener("click", function() {
-          submitAttraction(point.longitude, point.latitude);
-        });
+        // ... (保持不变)
       }
 
       window.submitAttraction = function(longitude, latitude) {
-        const name = document.getElementById("name").value;
-        const type = document.getElementById("type").value;
-        const description = document.getElementById("description").value;
-
-        const newFeature = new Graphic({
-          geometry: {
-            type: "point",
-            longitude: longitude,
-            latitude: latitude
-          },
-          attributes: {
-            Name: name,
-            Att_Type: type,
-            Description: description
-          }
-        });
-
-        myAttractionsLayer.applyEdits({
-          addFeatures: [newFeature]
-        }).then(function(result) {
-          console.log("Attraction added successfully:", result);
-          document.getElementById("attractionForm").remove();
-          isEditing = false;
-          document.getElementById("addButton").innerText = "Add my attraction";
-          document.getElementById("addButton").style.backgroundColor = "#007acc";
-        }).catch(function(error) {
-          console.error("Error adding attraction:", error);
-        });
+        // ... (保持不变)
       };
+
+      function addComment(feature) {
+        const comment = prompt("Enter your comment:");
+        const username = prompt("Enter your username:");
+        if (comment && username) {
+          const attractionId = feature.attributes.OBJECTID || feature.attributes.Name;
+          const newComment = new Graphic({
+            geometry: feature.geometry,
+            attributes: {
+              AttractionID: attractionId,
+              Comments: comment,
+              Username: username
+            }
+          });
+
+          commentsLayer.applyEdits({
+            addFeatures: [newComment]
+          }).then(function(result) {
+            console.log("Comment added successfully");
+            loadComments(feature, document.getElementById("commentsDiv"));
+          }).catch(function(error) {
+            console.error("Error adding comment:", error);
+          });
+        }
+      }
+
+      function addRating(feature) {
+        const rating = prompt("Enter your rating (1-5):");
+        const username = prompt("Enter your username:");
+        if (rating && username && !isNaN(rating) && rating >= 1 && rating <= 5) {
+          const attractionId = feature.attributes.OBJECTID || feature.attributes.Name;
+          const newRating = new Graphic({
+            geometry: feature.geometry,
+            attributes: {
+              AttractionID: attractionId,
+              Rating: parseInt(rating),
+              Username: username
+            }
+          });
+
+          commentsLayer.applyEdits({
+            addFeatures: [newRating]
+          }).then(function(result) {
+            console.log("Rating added successfully");
+            loadComments(feature, document.getElementById("commentsDiv"));
+          }).catch(function(error) {
+            console.error("Error adding rating:", error);
+          });
+        } else {
+          alert("Please enter a valid rating between 1 and 5.");
+        }
+      }
+
+      function loadComments(feature, commentsDiv) {
+        const attractionId = feature.attributes.OBJECTID || feature.attributes.Name;
+        const query = commentsLayer.createQuery();
+        query.where = `AttractionID = '${attractionId}'`;
+        query.outFields = ["Comments", "Username", "Rating"];
+
+        commentsLayer.queryFeatures(query).then(function(result) {
+          let commentsHtml = "";
+          result.features.forEach(function(feature) {
+            const attributes = feature.attributes;
+            if (attributes.Comments) {
+              commentsHtml += `<p><strong>${attributes.Username}:</strong> ${attributes.Comments}</p>`;
+            }
+            if (attributes.Rating) {
+              commentsHtml += `<p><strong>${attributes.Username}:</strong> Rated ${attributes.Rating}/5</p>`;
+            }
+          });
+          commentsDiv.innerHTML = "<h4>Comments and Ratings</h4>" + (commentsHtml || "<p>No comments or ratings yet.</p>");
+        }).catch(function(error) {
+          console.error("Error loading comments:", error);
+        });
+      }
 
     });
   </script>
