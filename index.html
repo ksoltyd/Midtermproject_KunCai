@@ -156,6 +156,15 @@
               console.log("Feature found:", feature);  // 打印找到的 feature 信息
               if (feature.attributes) {
                 console.log("Feature attributes:", feature.attributes);  // 打印 feature 的属性信息
+
+                // 验证 popupTemplate 中引用的字段是否存在
+                const fieldsToCheck = feature.layer.popupTemplate.content.match(/{(.*?)}/g);
+                fieldsToCheck.forEach(field => {
+                  const fieldName = field.replace(/{|}/g, "");
+                  if (!(fieldName in feature.attributes)) {
+                    console.warn(`Field '${fieldName}' is missing in feature attributes.`);
+                  }
+                });
               } else {
                 console.log("No attributes found for the feature");
               }
