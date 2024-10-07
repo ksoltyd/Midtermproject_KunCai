@@ -26,13 +26,14 @@
   <div id="viewDiv"></div>
   <button id="addButton">Add my attraction</button>
 
-  <script src="https://js.arcgis.com/4.22/"></script>
+  <script src="https://js.arcgis.com/4.24/"></script>
   <script>
     require([
       "esri/Map",
       "esri/views/MapView",
-      "esri/layers/FeatureLayer"
-    ], function(Map, MapView, FeatureLayer) {
+      "esri/layers/FeatureLayer",
+      "esri/geometry/SpatialReference"
+    ], function(Map, MapView, FeatureLayer, SpatialReference) {
 
       // 定义是否处于编辑模式
       let isEditing = false;
@@ -49,39 +50,77 @@
         zoom: 4 // 缩放级别
       });
 
-      // Popup templates for different layers
-      const popupOsmAttraction = {
-        title: "{name}",
-        content: `
-          <b>OBJECTID:</b> {OBJECTID}<br>
-          <b>Name:</b> {name ? name : "No name available"}<br>
-          <b>Type:</b> {tourism ? tourism : "No type available"}<br>
-          <b>Description:</b> {description ? description : "No description available"}<br>
-          <b>Website:</b> {website ? '<a href="' + website + '" target="_blank">' + website + '</a>' : "No website available"}<br>
-        `
+      // 假设从其他地方获取的 JSON 数据 (例如通过 API 请求)
+      const osmAttractionsData = {
+        features: [
+          {
+            attributes: {
+              OBJECTID: 1,
+              name: "Example Attraction",
+              tourism: "museum",
+              description: "A wonderful place to visit",
+              website: "http://example.com"
+            },
+            geometry: {
+              type: "point",
+              coordinates: [-100, 40]
+            }
+          }
+        ],
+        fields: [
+          { name: "OBJECTID", type: "oid" },
+          { name: "name", type: "string" },
+          { name: "tourism", type: "string" },
+          { name: "description", type: "string" },
+          { name: "website", type: "string" }
+        ],
+        geometryType: "point",
+        spatialReference: { wkid: 4326 }
       };
 
-      const popupMyAttraction = {
-        title: "{Name}",
-        content: `
-          <b>Attraction Name:</b> {Name}<br>
-          <b>Attraction Type:</b> {Att_Type ? Att_Type : "No type available"}<br>
-          <b>Description:</b> {Description ? Description : "No description available"}
-        `
-      };
-
-      // Define the FeatureLayer for OpenStreetMap attractions
+      // 使用 JSON 数据创建 FeatureLayer
       const osmAttractionsLayer = new FeatureLayer({
-        url: "https://services6.arcgis.com/Do88DoK2xjTUCXd1/arcgis/rest/services/OSM_NA_Tourism/FeatureServer",
-        outFields: ["OBJECTID", "name", "tourism", "description", "website"],
-        popupTemplate: popupOsmAttraction  // Use the defined popup template
+        id: "osmAttractions",
+        source: osmAttractionsData.features.map((feature) => {
+          return {
+            attributes: feature.attributes,
+            geometry: {
+              type: feature.geometry.type,
+              longitude: feature.geometry.coordinates[0],
+              latitude: feature.geometry.coordinates[1],
+              spatialReference: new SpatialReference({ wkid: osmAttractionsData.spatialReference.wkid })
+            }
+          };
+        }),
+        fields: osmAttractionsData.fields,
+        outFields: ["*"],
+        objectIdField: "OBJECTID",
+        geometryType: osmAttractionsData.geometryType,
+        spatialReference: new SpatialReference({ wkid: osmAttractionsData.spatialReference.wkid }),
+        popupTemplate: {
+          title: "{name}",
+          content: `
+            <b>OBJECTID:</b> {OBJECTID}<br>
+            <b>Name:</b> {name ? name : "No name available"}<br>
+            <b>Type:</b> {tourism ? tourism : "No type available"}<br>
+            <b>Description:</b> {description ? description : "No description available"}<br>
+            <b>Website:</b> {website ? '<a href="' + website + '" target="_blank">' + website + '</a>' : "No website available"}<br>
+          `
+        }
       });
 
       // Define the FeatureLayer for My Attractions
       const myAttractionsLayer = new FeatureLayer({
         url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/My_Attraction/FeatureServer",
         outFields: ["Name", "Att_Type", "Description"],
-        popupTemplate: popupMyAttraction  // Use the defined popup template
+        popupTemplate: {
+          title: "{Name}",
+          content: `
+            <b>Attraction Name:</b> {Name}<br>
+            <b>Attraction Type:</b> {Att_Type ? Att_Type : "No type available"}<br>
+            <b>Description:</b> {Description ? Description : "No description available"}
+          `
+        }
       });
 
       // Define the FeatureLayer for Comments and Rating (no popup needed here)
@@ -91,44 +130,6 @@
 
       // Adding layers to the map
       map.addMany([osmAttractionsLayer, myAttractionsLayer]);
-
-      // 确认 osmAttractionsLayer 加载成功后检查字段名
-      osmAttractionsLayer.when(() => {
-        osmAttractionsLayer.queryFeatures({
-          where: "1=1",  // 查询所有要素
-          outFields: ["*"],  // 获取所有字段
-          returnGeometry: false
-        }).then(function(results) {
-          if (results.features.length > 0) {
-            console.log("Available fields in OSM Attractions Layer:", results.features[0].attributes);
-          } else {
-            console.log("No features found in OSM Attractions Layer");
-          }
-        }).catch(function(error) {
-          console.error("Error querying features:", error);
-        });
-      }, (error) => {
-        console.error("Error loading OSM Attractions Layer:", error);
-      });
-
-      // 同样可以为 myAttractionsLayer 检查字段
-      myAttractionsLayer.when(() => {
-        myAttractionsLayer.queryFeatures({
-          where: "1=1",  // 查询所有要素
-          outFields: ["*"],  // 获取所有字段
-          returnGeometry: false
-        }).then(function(results) {
-          if (results.features.length > 0) {
-            console.log("Available fields in My Attractions Layer:", results.features[0].attributes);
-          } else {
-            console.log("No features found in My Attractions Layer");
-          }
-        }).catch(function(error) {
-          console.error("Error querying features:", error);
-        });
-      }, (error) => {
-        console.error("Error loading My Attractions Layer:", error);
-      });
 
       // 监听添加景点按钮
       document.getElementById("addButton").addEventListener("click", function() {
@@ -156,22 +157,9 @@
               console.log("Feature found:", feature);  // 打印找到的 feature 信息
               if (feature.attributes) {
                 console.log("Feature attributes:", feature.attributes);  // 打印 feature 的属性信息
-
-                // 验证 popupTemplate 中引用的字段是否存在
-                const fieldsToCheck = feature.layer.popupTemplate.content.match(/{(.*?)}/g);
-                fieldsToCheck.forEach(field => {
-                  const fieldName = field.replace(/{|}/g, "");
-                  if (!(fieldName in feature.attributes)) {
-                    console.warn(`Field '${fieldName}' is missing in feature attributes.`);
-                  }
-                });
               } else {
                 console.log("No attributes found for the feature");
               }
-
-              // 确认弹出内容是否正确生成
-              const popupContent = feature.layer.popupTemplate ? feature.layer.popupTemplate.content : "No popup template available";
-              console.log("Popup content before displaying:", popupContent);
 
               view.popup.open({
                 features: [feature],
