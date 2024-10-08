@@ -70,8 +70,10 @@
 <body>
   <div id="viewDiv"></div>
   <button id="addButton">Add my attraction</button>
-  <div id="legendContainer" class="legend-container" style="display: block;">
-    <div id="legendDiv"></div>
+  <div id="legendContainer" class="legend-container">
+    <div id="legendContent">
+      <div id="legendDiv"></div>
+    </div>
     <button id="toggleLegend">Hide Legend</button>
   </div>
 
@@ -432,17 +434,18 @@ function cancelEditing() {
         });
       }
 
-const legendContainer = document.getElementById("legendContainer");
-const toggleLegendBtn = document.getElementById("toggleLegend");
+  const legendContainer = document.getElementById("legendContainer");
+  const legendContent = document.getElementById("legendContent");
+  const toggleLegendBtn = document.getElementById("toggleLegend");
 
-toggleLegendBtn.addEventListener("click", function() {
-  if (legendContainer.style.display === "none") {
-    legendContainer.style.display = "block";
-    this.textContent = "Hide Legend";
-  } else {
-    legendContainer.style.display = "none";
-    this.textContent = "Show Legend";
-  }
+  toggleLegendBtn.addEventListener("click", function() {
+    if (legendContent.style.display === "none") {
+      legendContent.style.display = "block";
+      this.textContent = "Hide Legend";
+    } else {
+      legendContent.style.display = "none";
+      this.textContent = "Show Legend";
+    }
 });
 
     });
