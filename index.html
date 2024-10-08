@@ -393,29 +393,41 @@ function cancelEditing() {
       }
 
       function loadComments(feature, commentsDiv) {
-        console.log("Loading comments for feature:", feature);
-        const attractionId = feature.attributes.OBJECTID || feature.attributes.Name;
-        const query = commentsLayer.createQuery();
-        query.where = `AttractionID = '${attractionId}'`;
-        query.outFields = ["Comments", "Username", "Rating"];
+  console.log("Loading comments for feature:", feature);
+  const attractionId = feature.attributes.OBJECTID || feature.attributes.Name;
+  const query = commentsLayer.createQuery();
+  query.where = `AttractionID = '${attractionId}'`;
+  query.outFields = ["Comments", "Username", "Rating"];
 
-        commentsLayer.queryFeatures(query).then(function(result) {
-          console.log("Comments query result:", result);
-          let commentsHtml = "";
-          result.features.forEach(function(feature) {
-            const attributes = feature.attributes;
-            if (attributes.Comments) {
-              commentsHtml += `<p><strong>${attributes.Username}:</strong> ${attributes.Comments}</p>`;
-            }
-            if (attributes.Rating) {
-              commentsHtml += `<p><strong>${attributes.Username}:</strong> Rated ${attributes.Rating}/5</p>`;
-            }
-          });
-          commentsDiv.innerHTML = "<h4>Comments and Ratings</h4>" + (commentsHtml || "<p>No comments or ratings yet.</p>");
-        }).catch(function(error) {
-          console.error("Error loading comments:", error);
-        });
+  commentsLayer.queryFeatures(query).then(function(result) {
+    console.log("Comments query result:", result);
+    let commentsHtml = "";
+    let totalRating = 0;
+    let ratingCount = 0;
+
+    result.features.forEach(function(feature) {
+      const attributes = feature.attributes;
+      if (attributes.Comments) {
+        commentsHtml += `<p><strong>${attributes.Username}:</strong> ${attributes.Comments}</p>`;
       }
+      if (attributes.Rating) {
+        commentsHtml += `<p><strong>${attributes.Username}:</strong> Rated ${attributes.Rating}/5</p>`;
+        totalRating += attributes.Rating;
+        ratingCount++;
+      }
+    });
+
+    let averageRating = ratingCount > 0 ? (totalRating / ratingCount).toFixed(1) : "N/A";
+    
+    let contentHtml = `<h4>Comments and Ratings</h4>
+                       <p><strong>Average Rating:</strong> ${averageRating}/5 (${ratingCount} ratings)</p>`;
+    contentHtml += commentsHtml || "<p>No comments or ratings yet.</p>";
+    
+    commentsDiv.innerHTML = contentHtml;
+  }).catch(function(error) {
+    console.error("Error loading comments:", error);
+  });
+}
 
       function createLegend() {
         const legend = new Legend({
