@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Interactive Tourist Attractions Map</title>
+  <title>Add and Rate Attractions</title>
   <link rel="stylesheet" href="https://js.arcgis.com/4.24/esri/themes/light/main.css">
   <style>
     html, body, #viewDiv {
@@ -57,11 +57,8 @@
       "esri/views/MapView",
       "esri/layers/FeatureLayer",
       "esri/widgets/Popup",
-      "esri/Graphic",
-      "esri/renderers/UniqueValueRenderer",
-      "esri/symbols/PictureMarkerSymbol",
-      "esri/widgets/Legend"
-    ], function(Map, MapView, FeatureLayer, Popup, Graphic, UniqueValueRenderer, PictureMarkerSymbol, Legend) {
+      "esri/Graphic"
+    ], function(Map, MapView, FeatureLayer, Popup, Graphic) {
 
       let isEditing = false;
 
@@ -74,35 +71,6 @@
         map: map,
         center: [-100, 40],
         zoom: 4
-      });
-
-      // Define symbols for different attraction types
-      const symbolsConfig = {
-        museum: {url: "https://static.arcgis.com/images/Symbols/PeoplePlaces/Museum.png", name: "Museum"},
-        park: {url: "https://static.arcgis.com/images/Symbols/OutdoorRecreation/Park.png", name: "Park"},
-        zoo: {url: "https://static.arcgis.com/images/Symbols/Places/Zoo.png", name: "Zoo"},
-        aquarium: {url: "https://static.arcgis.com/images/Symbols/Places/Aquarium.png", name: "Aquarium"},
-        theme_park: {url: "https://static.arcgis.com/images/Symbols/Places/AmusementPark.png", name: "Theme Park"},
-        gallery: {url: "https://static.arcgis.com/images/Symbols/PeoplePlaces/ArtGallery.png", name: "Gallery"}
-      };
-
-      // Create UniqueValueRenderer
-      const attractionsRenderer = new UniqueValueRenderer({
-        field: "tourism",
-        defaultSymbol: new PictureMarkerSymbol({
-          url: "https://static.arcgis.com/images/Symbols/Basic/RedStickpin.png",
-          width: "24px",
-          height: "24px"
-        }),
-        uniqueValueInfos: Object.entries(symbolsConfig).map(([key, value]) => ({
-          value: key,
-          symbol: new PictureMarkerSymbol({
-            url: value.url,
-            width: "24px",
-            height: "24px"
-          }),
-          label: value.name
-        }))
       });
 
       function createPopupTemplate(layerName) {
@@ -164,8 +132,7 @@
       const osmAttractionsLayer = new FeatureLayer({
         url: "https://services6.arcgis.com/Do88DoK2xjTUCXd1/arcgis/rest/services/OSM_NA_Tourism/FeatureServer",
         outFields: ["OBJECTID", "name", "tourism", "description", "website"],
-        popupTemplate: createPopupTemplate("osmAttractionsLayer"),
-        renderer: attractionsRenderer
+        popupTemplate: createPopupTemplate("osmAttractionsLayer")
       });
 
       const myAttractionsLayer = new FeatureLayer({
@@ -184,15 +151,6 @@
         Promise.resolve(map.addMany([osmAttractionsLayer, myAttractionsLayer, commentsLayer]))
           .then(() => {
             console.log("All layers added successfully");
-            // Add Legend widget
-            const legend = new Legend({
-              view: view,
-              layerInfos: [{
-                layer: osmAttractionsLayer,
-                title: "Tourist Attractions"
-              }]
-            });
-            view.ui.add(legend, "bottom-left");
           })
           .catch(error => {
             console.error("Error adding layers:", error);
