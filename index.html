@@ -70,7 +70,7 @@
 <body>
   <div id="viewDiv"></div>
   <button id="addButton">Add my attraction</button>
-  <div id="legendContainer" class="legend-container">
+  <div id="legendContainer" class="legend-container" style="display: block;">
     <div id="legendDiv"></div>
     <button id="toggleLegend">隐藏图例</button>
   </div>
@@ -394,6 +394,9 @@
           this.textContent = "显示图例";
         }
       });
+
+      // 确保初始状态下图例是可见的
+      legendContainer.style.display = "block";
     });
   </script>
 </body>
