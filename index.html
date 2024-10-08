@@ -83,15 +83,8 @@
       "esri/layers/FeatureLayer",
       "esri/widgets/Popup",
       "esri/Graphic",
-      "esri/widgets/Legend",
-      "esri/widgets/Locate",
-      "esri/widgets/Search"
-      "esri/views/MapView",
-      "esri/layers/FeatureLayer",
-      "esri/widgets/Popup",
-      "esri/Graphic",
       "esri/widgets/Legend"
-    ], function(Map, MapView, FeatureLayer, Popup, Graphic, Legend, Locate, Search) {
+    ], function(Map, MapView, FeatureLayer, Popup, Graphic, Legend) {
 
       let isEditing = false;
 
@@ -180,22 +173,6 @@
       });
 
       view.when(() => {
-        // Add Locate widget to the view
-        const locateWidget = new Locate({
-          view: view,
-          useHeadingEnabled: false,
-          goToOverride: function(view, options) {
-            options.target.scale = 1500;
-            return view.goTo(options.target);
-          }
-        });
-        view.ui.add(locateWidget, "top-left");
-
-        // Add Search widget to the view
-        const searchWidget = new Search({
-          view: view
-        });
-        view.ui.add(searchWidget, "top-right");
         console.log("Map view is ready");
         Promise.resolve(map.addMany([osmAttractionsLayer, myAttractionsLayer, commentsLayer]))
           .then(() => {
