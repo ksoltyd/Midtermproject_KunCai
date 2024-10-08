@@ -83,8 +83,10 @@
       "esri/layers/FeatureLayer",
       "esri/widgets/Popup",
       "esri/Graphic",
-      "esri/widgets/Legend"
-    ], function(Map, MapView, FeatureLayer, Popup, Graphic, Legend) {
+      "esri/widgets/Legend",
+      "esri/widgets/Locate",  // 添加 Locate 小部件
+      "esri/widgets/Search"   // 添加 Search 小部件
+    ], function(Map, MapView, FeatureLayer, Popup, Graphic, Legend,Locate,Search) {
 
       let isEditing = false;
 
@@ -97,6 +99,26 @@
         map: map,
         center: [-100, 40],
         zoom: 4
+      });
+      const locateBtn = new Locate({
+        view: view
+      });
+      view.ui.add(locateBtn, {
+        position: "top-left",
+        index: 0
+      });
+
+      // 添加搜索部件
+      const searchWidget = new Search({
+        view: view,
+        sources: [],
+        includeDefaultSources: true,
+        locationEnabled: true,
+        placeholder: "Search for places"
+      });
+      view.ui.add(searchWidget, {
+        position: "top-left",
+        index: 1
       });
 
       function createPopupTemplate(layerName) {
@@ -388,15 +410,13 @@
       toggleLegendBtn.addEventListener("click", function() {
         if (legendContainer.style.display === "none") {
           legendContainer.style.display = "block";
-          this.textContent = "Show Legend";
+          this.textContent = "Hide Legend";
         } else {
           legendContainer.style.display = "none";
-          this.textContent = "Hide Legend";
+          this.textContent = "Show Legend";
         }
       });
 
-      // 确保初始状态下图例是可见的
-      legendContainer.style.display = "block";
     });
   </script>
 </body>
