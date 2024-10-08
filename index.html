@@ -88,7 +88,7 @@
       "esri/widgets/Search"   // 添加 Search 小部件
     ], function(Map, MapView, FeatureLayer, Popup, Graphic, Legend,Locate,Search) {
 
-      let isEditing = false;
+
 
       const map = new Map({
         basemap: "topo-vector"
@@ -215,12 +215,31 @@
         }
       });
 
-      document.getElementById("addButton").addEventListener("click", function() {
-        isEditing = true;
-        this.innerText = "Click on the map to add a new attraction";
-        this.style.backgroundColor = "#ff8800";
-        console.log("Add button clicked, editing mode enabled");
-      });
+      let isEditing = false;
+const addButton = document.getElementById("addButton");
+addButton.addEventListener("click", function() {
+  if (!isEditing) {
+    isEditing = true;
+    this.innerText = "Cancel adding attraction";
+    this.style.backgroundColor = "#ff8800";
+    console.log("Add button clicked, editing mode enabled");
+  } else {
+    cancelEditing();
+  }
+});
+
+// 同时，在这里添加新的 cancelEditing 函数
+function cancelEditing() {
+  isEditing = false;
+  addButton.innerText = "Add my attraction";
+  addButton.style.backgroundColor = "#007acc";
+  console.log("Editing mode cancelled");
+  // 如果有打开的表单，关闭它
+  const form = document.getElementById("attractionForm");
+  if (form) {
+    form.remove();
+  }
+}
 
       view.on("click", function(event) {
         console.log("Map clicked", event);
@@ -257,6 +276,10 @@
 
       function openAddAttractionForm(point) {
         console.log("Opening add attraction form", point);
+        const existingForm = document.getElementById("attractionForm");
+  if (existingForm) {
+    existingForm.remove();
+  }
         const formHtml = `
           <div id="attractionForm" style="position: absolute; top: 20px; left: 20px; background: white; padding: 10px; z-index: 1000;">
             <h3>Add a new attraction</h3>
@@ -267,6 +290,7 @@
             <label for="description">Description:</label>
             <textarea id="description" placeholder="Describe the attraction"></textarea><br>
             <button id="submitAttractionButton">Submit</button>
+            <button id="cancelAttractionButton">Cancel</button> <!-- 新增：取消按钮 -->
           </div>
         `;
         document.body.insertAdjacentHTML("beforeend", formHtml);
@@ -274,6 +298,10 @@
         document.getElementById("submitAttractionButton").addEventListener("click", function() {
           submitAttraction(point.longitude, point.latitude);
         });
+        document.getElementById("cancelAttractionButton").addEventListener("click", function() {
+    cancelEditing();
+  });
+        
       }
 
       window.submitAttraction = function(longitude, latitude) {
@@ -405,17 +433,17 @@
       }
 
       const legendContainer = document.getElementById("legendContainer");
-      const toggleLegendBtn = document.getElementById("toggleLegend");
-      
-      toggleLegendBtn.addEventListener("click", function() {
-        if (legendContainer.style.display === "none") {
-          legendContainer.style.display = "block";
-          this.textContent = "Hide Legend";
-        } else {
-          legendContainer.style.display = "none";
-          this.textContent = "Show Legend";
-        }
-      });
+const toggleLegendBtn = document.getElementById("toggleLegend");
+
+toggleLegendBtn.addEventListener("click", function() {
+  if (legendContainer.style.display === "none") {
+    legendContainer.style.display = "block";
+    this.textContent = "Hide Legend";
+  } else {
+    legendContainer.style.display = "none";
+    this.textContent = "Show Legend";
+  }
+});
 
     });
   </script>
