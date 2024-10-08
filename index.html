@@ -69,10 +69,12 @@
 </head>
 <body>
   <div id="viewDiv"></div>
-  <div id="rangeControlDiv" style="position: absolute; top: 60px; right: 20px; background: white; padding: 10px; z-index: 1000;">
-    <label for="visibleRangeSlider">Visible Range:</label>
-    <input type="range" id="visibleRangeSlider" min="0" max="5000000" step="100" value="18056">
-    <span id="rangeValue">18056</span>
+  <div id="iconSizeControlDiv" style="position: absolute; top: 60px; right: 20px; background: white; padding: 10px; z-index: 1000;">
+    <p style="margin: 0 0 5px 0; font-weight: bold;">Adjust Icon Size</p>
+    <label for="iconSizeSlider">Icon Size:</label>
+    <input type="range" id="iconSizeSlider" min="6" max="48" step="2" value="24" title="Drag to adjust icon size">
+    <span id="iconSizeValue">24</span>
+    <p style="margin: 5px 0 0 0; font-size: 12px; color: #666;">Slide to change the size of attraction icons</p>
   </div>
   <button id="addButton">Add my attraction</button>
   <div id="legendContainer" class="legend-container" style="display: block;">
@@ -184,12 +186,22 @@
       }
 
       const osmAttractionsLayer = new FeatureLayer({
-        url: "https://services6.arcgis.com/Do88DoK2xjTUCXd1/arcgis/rest/services/OSM_NA_Tourism/FeatureServer",
-        outFields: ["OBJECTID", "name", "tourism", "description", "website"],
-        popupTemplate: createPopupTemplate("osmAttractionsLayer"),
-        minScale: 0,  // 最大缩放级别（全图显示）
-        maxScale: 18056  // 最小缩放级别（默认值，可以调整）
-      });
+  url: "https://services6.arcgis.com/Do88DoK2xjTUCXd1/arcgis/rest/services/OSM_NA_Tourism/FeatureServer",
+  outFields: ["OBJECTID", "name", "tourism", "description", "website"],
+  popupTemplate: createPopupTemplate("osmAttractionsLayer"),
+  renderer: {
+    type: "simple",
+    symbol: {
+      type: "simple-marker",
+      size: 24,
+      color: "#FF5733",
+      outline: {
+        color: "#ffffff",
+        width: 2
+      }
+    }
+  }
+});
 
       const myAttractionsLayer = new FeatureLayer({
         url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/My_Attraction/FeatureServer",
@@ -201,28 +213,48 @@
         url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/Comments_and_Rating/FeatureServer",
         outFields: ["OBJECTID", "AttractionID", "Comments", "Username", "Rating"]
       });
-      function setupRangeControl() {
-  const rangeSlider = document.getElementById('visibleRangeSlider');
-  const rangeValue = document.getElementById('rangeValue');
+      function setupIconSizeControl() {
+  const iconSizeSlider = document.getElementById('iconSizeSlider');
+  const iconSizeValue = document.getElementById('iconSizeValue');
 
-  function updateLayerScale(scale) {
-    osmAttractionsLayer.minScale = 0;
-    osmAttractionsLayer.maxScale = scale;
-    rangeValue.textContent = scale;
+  function updateIconSize(size) {
+    const renderer = osmAttractionsLayer.renderer.clone();
+    renderer.symbol.size = size;
+    osmAttractionsLayer.renderer = renderer;
+    iconSizeValue.textContent = size;
   }
 
-  rangeSlider.addEventListener('input', function(e) {
-    const scale = parseInt(e.target.value);
-    updateLayerScale(scale);
+  iconSizeSlider.addEventListener('input', function(e) {
+    const size = parseInt(e.target.value);
+    updateIconSize(size);
   });
+    // 添加工具提示
+    const slider = document.getElementById('iconSizeSlider');
+  let tooltip = document.createElement('div');
+  tooltip.style.cssText = 'position:absolute; background-color:black; color:white; padding:5px; border-radius:5px; font-size:12px; pointer-events:none; opacity:0; transition: opacity 0.3s;';
+  document.body.appendChild(tooltip);
 
-  view.watch('scale', function(newScale) {
-    updateLayerScale(newScale);
-    rangeSlider.value = newScale;
-  });
+  slider.addEventListener('mouseover', showTooltip);
+  slider.addEventListener('mousemove', moveTooltip);
+  slider.addEventListener('mouseout', hideTooltip);
+
+  function showTooltip(e) {
+    tooltip.style.opacity = '1';
+    moveTooltip(e);
+  }
+
+  function moveTooltip(e) {
+    tooltip.style.left = (e.pageX + 10) + 'px';
+    tooltip.style.top = (e.pageY + 10) + 'px';
+    tooltip.textContent = 'Drag to adjust icon size';
+  }
+
+  function hideTooltip() {
+    tooltip.style.opacity = '0';
+  }
 
   // 初始化
-  updateLayerScale(18056);
+  updateIconSize(24);
 }
 
       view.when(() => {
@@ -231,7 +263,7 @@
           .then(() => {
             console.log("All layers added successfully");
             createLegend();
-            setupRangeControl(); 
+            setupIconSizeControl(); 
           })
           .catch(error => {
             console.error("Error adding layers:", error);
