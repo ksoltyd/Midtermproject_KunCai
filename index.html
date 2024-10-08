@@ -71,6 +71,14 @@
   <div id="viewDiv"></div>
   <div id="rangeControlDiv" style="position: absolute; top: 60px; right: 20px; background: white; padding: 10px; z-index: 1000;">
     <label for="visibleRange">Visible Range:</label>
+    <select id="visibleRangeSelect">
+      <option value="custom">Custom</option>
+    </select>
+    <input type="range" id="visibleRangeSlider" min="0" max="591657528" step="1000" value="18056">
+    <span id="rangeValue">18056</span>
+  </div>
+  <div id="rangeControlDiv" style="position: absolute; top: 60px; right: 20px; background: white; padding: 10px; z-index: 1000;">
+    <label for="visibleRange">Visible Range:</label>
     <select id="visibleRange">
       <option value="custom">Current Map View</option>
     </select>
@@ -220,35 +228,57 @@
         outFields: ["OBJECTID", "AttractionID", "Comments", "Username", "Rating"]
       });
       function setupRangeControl() {
-    const rangeSelect = document.getElementById('visibleRange');
-    
-    // 填充下拉菜单
-    for (let [name, scale] of Object.entries(scalePresets)) {
-      const option = document.createElement('option');
-      option.value = scale;
-      option.textContent = name;
-      rangeSelect.appendChild(option);
-    }
+  const rangeSelect = document.getElementById('visibleRangeSelect');
+  const rangeSlider = document.getElementById('visibleRangeSlider');
+  const rangeValue = document.getElementById('rangeValue');
 
-    // 添加事件监听器
-    rangeSelect.addEventListener('change', function(e) {
-      const value = e.target.value;
-      if (value === 'custom') {
-        osmAttractionsLayer.minScale = 0;
-        osmAttractionsLayer.maxScale = view.scale;
-      } else {
-        osmAttractionsLayer.minScale = 0;
-        osmAttractionsLayer.maxScale = parseInt(value);
-      }
-    });
-
-    // 监听地图视图的变化
-    view.watch('scale', function(newScale) {
-      if (rangeSelect.value === 'custom') {
-        osmAttractionsLayer.maxScale = newScale;
-      }
-    });
+  // 填充下拉菜单
+  for (let [name, scale] of Object.entries(scalePresets)) {
+    const option = document.createElement('option');
+    option.value = scale;
+    option.textContent = name;
+    rangeSelect.appendChild(option);
   }
+
+  // 更新图层比例尺的函数
+  function updateLayerScale(scale) {
+    osmAttractionsLayer.minScale = 0;
+    osmAttractionsLayer.maxScale = scale;
+    rangeValue.textContent = scale;
+  }
+
+  // 下拉菜单事件监听器
+  rangeSelect.addEventListener('change', function(e) {
+    const value = e.target.value;
+    if (value === 'custom') {
+      // 如果选择了 "Custom"，使用滑动条的值
+      updateLayerScale(parseInt(rangeSlider.value));
+    } else {
+      // 否则，使用选定的预设比例
+      const scale = parseInt(value);
+      updateLayerScale(scale);
+      rangeSlider.value = scale;
+    }
+  });
+
+  // 滑动条事件监听器
+  rangeSlider.addEventListener('input', function(e) {
+    const scale = parseInt(e.target.value);
+    updateLayerScale(scale);
+    rangeSelect.value = 'custom';
+  });
+
+  // 监听地图视图的变化
+  view.watch('scale', function(newScale) {
+    if (rangeSelect.value === 'custom') {
+      updateLayerScale(newScale);
+      rangeSlider.value = newScale;
+    }
+  });
+
+  // 初始化
+  updateLayerScale(18056);
+}
 
       view.when(() => {
         console.log("Map view is ready");
