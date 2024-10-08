@@ -69,6 +69,12 @@
 </head>
 <body>
   <div id="viewDiv"></div>
+  <div id="rangeControlDiv" style="position: absolute; top: 60px; right: 20px; background: white; padding: 10px; z-index: 1000;">
+    <label for="visibleRange">Visible Range:</label>
+    <select id="visibleRange">
+      <option value="custom">Current Map View</option>
+    </select>
+  </div>
   <button id="addButton">Add my attraction</button>
   <div id="legendContainer" class="legend-container" style="display: block;">
     <div id="legendDiv"></div>
@@ -77,6 +83,24 @@
 
   <script src="https://js.arcgis.com/4.24/"></script>
   <script>
+    const scalePresets = {
+  "World": 591657528,
+  "Continents": 147914382,
+  "Large Countries": 73957191,
+  "Medium Countries": 36978595,
+  "Small Countries": 18489298,
+  "States": 9244649,
+  "Large Regions": 4622324,
+  "Medium Regions": 2311162,
+  "Small Regions": 1155581,
+  "Large Cities": 577790,
+  "Medium Cities": 288895,
+  "Small Cities": 144448,
+  "City Blocks": 72224,
+  "Streets": 36112,
+  "Buildings": 18056,
+  "Room Level": 9028
+};
     require([
       "esri/Map",
       "esri/views/MapView",
@@ -180,7 +204,9 @@
       const osmAttractionsLayer = new FeatureLayer({
         url: "https://services6.arcgis.com/Do88DoK2xjTUCXd1/arcgis/rest/services/OSM_NA_Tourism/FeatureServer",
         outFields: ["OBJECTID", "name", "tourism", "description", "website"],
-        popupTemplate: createPopupTemplate("osmAttractionsLayer")
+        popupTemplate: createPopupTemplate("osmAttractionsLayer"),
+        minScale: 0,  // 最大缩放级别（全图显示）
+        maxScale: 18056  // 最小缩放级别（默认值，可以调整）
       });
 
       const myAttractionsLayer = new FeatureLayer({
@@ -193,6 +219,36 @@
         url: "https://services.arcgis.com/HRPe58bUyBqyyiCt/arcgis/rest/services/Comments_and_Rating/FeatureServer",
         outFields: ["OBJECTID", "AttractionID", "Comments", "Username", "Rating"]
       });
+      function setupRangeControl() {
+    const rangeSelect = document.getElementById('visibleRange');
+    
+    // 填充下拉菜单
+    for (let [name, scale] of Object.entries(scalePresets)) {
+      const option = document.createElement('option');
+      option.value = scale;
+      option.textContent = name;
+      rangeSelect.appendChild(option);
+    }
+
+    // 添加事件监听器
+    rangeSelect.addEventListener('change', function(e) {
+      const value = e.target.value;
+      if (value === 'custom') {
+        osmAttractionsLayer.minScale = 0;
+        osmAttractionsLayer.maxScale = view.scale;
+      } else {
+        osmAttractionsLayer.minScale = 0;
+        osmAttractionsLayer.maxScale = parseInt(value);
+      }
+    });
+
+    // 监听地图视图的变化
+    view.watch('scale', function(newScale) {
+      if (rangeSelect.value === 'custom') {
+        osmAttractionsLayer.maxScale = newScale;
+      }
+    });
+  }
 
       view.when(() => {
         console.log("Map view is ready");
@@ -200,6 +256,7 @@
           .then(() => {
             console.log("All layers added successfully");
             createLegend();
+            setupRangeControl(); 
           })
           .catch(error => {
             console.error("Error adding layers:", error);
