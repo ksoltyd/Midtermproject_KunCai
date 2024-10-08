@@ -78,22 +78,15 @@
   <script src="https://js.arcgis.com/4.24/"></script>
   <script>
     require([
-      "esri/config",
       "esri/Map",
-      "esri/widgets/BasemapGallery",
       "esri/views/MapView",
-      "esri/widgets/Expand",
-      "esri/widgets/Locate",
-      "esri/widgets/Search",
       "esri/layers/FeatureLayer",
-      "esri/layers/GraphicsLayer",
       "esri/widgets/Popup",
       "esri/Graphic",
       "esri/widgets/Legend"
-    ], function(esriConfig,Map, MapView,BasemapGallery,FeatureLayer,Expand,Locate,Search,GraphicsLayer, Popup, Graphic, Legend) {
+    ], function(Map, MapView, FeatureLayer, Popup, Graphic, Legend) {
 
       let isEditing = false;
-      //esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurMhigZxkNnLwuvYOAd-vHESFyhc3WLcG-ZlOW0r-hrKtMSZiJtXuxMiF011aDmd-Y7ZIsCcizZwkuSfmyZhi9SQmg-w-zhczOvVYkW5Xh3iu_andIDPYaLFE8wEZ601p0X-n29-4yYY91yNrb2oWHGKcZ2VyScEoFNeWt9jLWfzBnNRmWFZ__TuvlZphyDD6hWBpHyI18t4-Wk3xb7x2DCE.AT1_rHjxjuXQ";
 
       const map = new Map({
         basemap: "topo-vector"
@@ -102,42 +95,9 @@
       const view = new MapView({
         container: "viewDiv",
         map: map,
-        center: [-89.3838,43.0722],
-        zoom: 12
+        center: [-100, 40],
+        zoom: 4
       });
-      const graphicsLayer = new GraphicsLayer();  
-map.add(graphicsLayer);
-              // 创建 BasemapGallery 小部件
-      const basemapGallery = new BasemapGallery({
-        view: view
-      });
-
-      // 可选：使用 Expand 小部件将 BasemapGallery 折叠显示
-      const bgExpand = new Expand({
-        view: view,
-        content: basemapGallery // BasemapGallery 小部件内容
-      });
-
-      // 将 BasemapGallery 小部件添加到地图视图的 UI 中
-      view.ui.add(bgExpand, "top-right"); // 在右上角显示 BasemapGallery
-      const locate = new Locate({
-        view: view,  // 将视图与 Locate 小部件关联
-        useHeadingEnabled: false, // 禁用罗盘指向
-        goToOverride: function(view, options) {
-          options.target.scale = 1500;  // 设置定位时的缩放比例
-          return view.goTo(options.target);
-        }
-      });
-
-      // 将 Locate 小部件添加到视图的顶部左侧
-      view.ui.add(locate, "top-left");
-      // 创建搜索栏并将其添加到视图中
-      const search = new Search({
-        view: view  // 将视图与 Search 小部件关联
-      });
-
-      // 将 Search 小部件添加到视图的顶部右侧
-      view.ui.add(search, "top-right");
 
       function createPopupTemplate(layerName) {
         console.log(`Creating popup template for ${layerName}`);
